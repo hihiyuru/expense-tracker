@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  base: '/expense-tracker/',
   plugins: [
     tailwindcss(),
     vue(),
@@ -16,10 +17,10 @@ export default defineConfig({
         theme_color: '#ffffff',
         background_color: '#f9fafb',
         display: 'standalone',
-        start_url: '/',
+        start_url: '/expense-tracker/',
         icons: [
-          { src: '/icon-192.svg', sizes: '192x192', type: 'image/svg+xml' },
-          { src: '/icon-512.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' },
+          { src: '/expense-tracker/icon-192.svg', sizes: '192x192', type: 'image/svg+xml' },
+          { src: '/expense-tracker/icon-512.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' },
         ],
       },
       workbox: {
