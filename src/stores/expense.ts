@@ -1,6 +1,7 @@
 import dayjs from 'dayjs'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { post } from '../lib/http'
 
 export interface Entry {
   id: string
@@ -13,9 +14,30 @@ export interface Entry {
   note: string
 }
 
-export const EXPENSE_CATEGORIES = ['餐飲', '交通', '娛樂', '購物', '醫療', '日用', '其他']
+export const EXPENSE_CATEGORIES = [
+  '餐飲',
+  '購物',
+  '服飾',
+  '日用',
+  '數碼',
+  '美妝',
+  '護膚',
+  '應用軟件',
+  '住房',
+  '交通',
+  '娛樂',
+  '醫療',
+  '通訊',
+  '汽車',
+  '學習',
+  '辦公',
+  '運動',
+  '社交',
+  '人情',
+  '育兒',
+]
 export const INCOME_CATEGORIES = ['薪資', '獎金', '投資', '兼職', '其他']
-export const PAYMENT_METHODS = ['現金', '中信信用卡', '中信Visa', '國泰信用卡', '永豐信用卡', '富邦信用卡', '轉帳']
+export const PAYMENT_METHODS = ['現金', '中信Visa', '中信信用卡', '國泰信用卡', '永豐信用卡', '富邦信用卡', '轉帳']
 
 export const useExpenseStore = defineStore('expense', () => {
   const scriptUrl = ref(localStorage.getItem('scriptUrl') || '')
@@ -59,14 +81,8 @@ export const useExpenseStore = defineStore('expense', () => {
         ? { date: newEntry.date, category: newEntry.category, amount: newEntry.amount, paymentMethod: newEntry.paymentMethod, note: newEntry.note }
         : null
 
-      if (payload) {
-        await fetch(scriptUrl.value, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-      }
+      if (payload)
+        await post(scriptUrl.value, payload)
       return { ok: true }
     }
     catch (e: any) {

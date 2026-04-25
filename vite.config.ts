@@ -5,6 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   base: '/expense-tracker/',
+  server: {
+    host: true,
+  },
   plugins: [
     tailwindcss(),
     vue(),

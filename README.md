@@ -62,33 +62,36 @@ pnpm lint:fix     # 自動修正 lint 問題
 function doPost(e) {
   const sheet = SpreadsheetApp
     .getActiveSpreadsheet()
-    .getSheetByName('每日消費');
-  const d = JSON.parse(e.postData.contents);
+    .getSheetByName('每日消費')
+  const d = JSON.parse(e.postData.contents)
 
   sheet.appendRow([
-    d.date, d.category, d.amount,
-    d.paymentMethod, d.note
-  ]);
+    d.date,
+    d.category,
+    d.amount,
+    d.paymentMethod,
+    d.note
+  ])
 
   // 依日期分組交替底色
-  const lastRow = sheet.getLastRow();
-  const numCols = 5;
-  const COLOR_A = '#f1f5f9';
-  const COLOR_B = '#eff6ff';
+  const lastRow = sheet.getLastRow()
+  const numCols = 5
+  const COLOR_A = '#f1f5f9'
+  const COLOR_B = '#eff6ff'
 
-  let color = COLOR_A;
+  let color = COLOR_A
   if (lastRow > 2) {
-    const prevDate = sheet.getRange(lastRow - 1, 1).getDisplayValue();
-    const prevColor = sheet.getRange(lastRow - 1, 1).getBackground();
+    const prevDate = sheet.getRange(lastRow - 1, 1).getDisplayValue()
+    const prevColor = sheet.getRange(lastRow - 1, 1).getBackground()
     color = prevDate === d.date
       ? prevColor
-      : (prevColor === COLOR_A ? COLOR_B : COLOR_A);
+      : (prevColor === COLOR_A ? COLOR_B : COLOR_A)
   }
-  sheet.getRange(lastRow, 1, 1, numCols).setBackground(color);
+  sheet.getRange(lastRow, 1, 1, numCols).setBackground(color)
 
   return ContentService
     .createTextOutput(JSON.stringify({ status: 'ok' }))
-    .setMimeType(ContentService.MimeType.JSON);
+    .setMimeType(ContentService.MimeType.JSON)
 }
 ```
 
