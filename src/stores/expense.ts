@@ -1,3 +1,4 @@
+import dayjs from 'dayjs'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
@@ -20,7 +21,7 @@ export const useExpenseStore = defineStore('expense', () => {
   const scriptUrl = ref(localStorage.getItem('scriptUrl') || '')
   const entries = ref<Entry[]>(JSON.parse(localStorage.getItem('entries') || '[]'))
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = dayjs().format('YYYY-MM-DD')
 
   const todayEntries = computed(() =>
     entries.value.filter(e => e.date === todayStr).slice().reverse(),

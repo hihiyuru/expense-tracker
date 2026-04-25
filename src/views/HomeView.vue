@@ -1,19 +1,20 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { showSuccessToast, showToast } from 'vant'
 import { computed, ref } from 'vue'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, PAYMENT_METHODS, useExpenseStore } from '../stores/expense'
 
 const store = useExpenseStore()
 
-const today = new Date()
-const todayLabel = `${today.getMonth() + 1}/${today.getDate()}`
+const today = dayjs()
+const todayLabel = today.format('M/D')
 
 const form = ref({
   type: 'expense' as 'expense' | 'income',
   amountStr: '',
   category: '',
   paymentMethod: '',
-  date: today.toISOString().split('T')[0] ?? '',
+  date: today.format('YYYY-MM-DD'),
   note: '',
 })
 
@@ -22,9 +23,9 @@ const showCatPicker = ref(false)
 const showPayPicker = ref(false)
 const showDatePicker = ref(false)
 const dateParts = ref([
-  String(today.getFullYear()),
-  String(today.getMonth() + 1).padStart(2, '0'),
-  String(today.getDate()).padStart(2, '0'),
+  today.format('YYYY'),
+  today.format('MM'),
+  today.format('DD'),
 ])
 
 const types = [
@@ -65,7 +66,7 @@ async function handleSubmit() {
     return showToast('請選擇支付方式')
 
   submitting.value = true
-  const time = new Date().toTimeString().slice(0, 5)
+  const time = dayjs().format('HH:mm')
 
   const result = await store.addEntry({
     type: form.value.type,
