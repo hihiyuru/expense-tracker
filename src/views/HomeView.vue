@@ -1,20 +1,27 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { CATEGORY_ICON } from '../lib/categoryIcons'
-import { useExpenseStore } from '../stores/expense'
+import { formatAmt } from '../lib/format'
+import { type SheetEntry, useExpenseStore } from '../stores/expense'
+
+const router = useRouter()
 
 const store = useExpenseStore()
 const now = ref(dayjs())
+const monthEntries = ref<SheetEntry[]>([])
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六']
 const MONTH_LABELS = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
 
 let timer: ReturnType<typeof setInterval>
-onMounted(() => {
+onMounted(async () => {
   timer = setInterval(() => {
     now.value = dayjs()
   }, 1000)
+  await store.fetchToday()
+  monthEntries.value = await store.fetchMonth(now.value.format('YYYY-MM'))
 })
 onUnmounted(() => {
   clearInterval(timer)
@@ -25,23 +32,37 @@ const weekDays = computed(() => {
   return Array.from({ length: 7 }, (_, i) => startOfWeek.add(i, 'day'))
 })
 
-const datesWithEntries = computed(() => new Set(store.entries.map(e => e.date)))
+const datesWithEntries = computed(() => new Set(monthEntries.value.map(e => e.date)))
 
 const weekExpense = computed(() => {
   const start = now.value.startOf('week').format('YYYY-MM-DD')
   const end = now.value.endOf('week').format('YYYY-MM-DD')
-  return store.entries
-    .filter(e => e.type === 'expense' && e.date >= start && e.date <= end)
-    .reduce((s, e) => s + e.amount, 0)
+  return monthEntries.value
+    .filter(e => e.date >= start && e.date <= end)
+    .reduce((s, e) => s + Number(e.amount), 0)
 })
 
-function formatAmt(n: number) {
-  return `NT$${n.toFixed(2)}`
-}
+
 </script>
 
 <template>
   <div class="px-4 pt-4 space-y-3">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <span class="text-lg font-semibold text-gray-800">記帳本</span>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs"
+        :class="store.scriptUrl ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'"
+        @click="!store.scriptUrl && router.push('/settings')"
+      >
+        <span
+          class="w-1.5 h-1.5 rounded-full"
+          :class="store.scriptUrl ? 'bg-green-500' : 'bg-gray-300'"
+        />
+        {{ store.scriptUrl ? '試算表已連動' : '未連動試算表' }}
+      </button>
+    </div>
+
     <!-- Calendar card -->
     <div class="rounded-3xl px-5 py-4 shadow-sm" style="background: #fff7ed">
       <!-- Top: 當前總花費 -->
@@ -85,7 +106,10 @@ function formatAmt(n: number) {
     </div>
 
     <!-- Entries -->
-    <div v-if="store.todayEntries.length === 0" class="text-center text-sm text-gray-300 py-16">
+    <div v-if="store.todayFetching" class="text-center text-sm text-gray-300 py-16">
+      載入中...
+    </div>
+    <div v-else-if="store.todayEntries.length === 0" class="text-center text-sm text-gray-300 py-16">
       今日尚無記錄，點擊下方 + 新增
     </div>
     <div

@@ -1,43 +1,52 @@
 <script setup lang="ts">
-import type { Entry } from '../stores/expense'
 import dayjs from 'dayjs'
-import { computed } from 'vue'
-import { useExpenseStore } from '../stores/expense'
+import { computed, onMounted, ref } from 'vue'
+import { formatAmt } from '../lib/format'
+import { type SheetEntry, useExpenseStore } from '../stores/expense'
 
 const store = useExpenseStore()
-
 const today = dayjs()
 const monthStr = today.format('YYYY-MM')
 
-const monthEntries = computed(() =>
-  store.entries.filter(e => e.date.startsWith(monthStr)),
-)
-const monthExpense = computed(() =>
-  monthEntries.value.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0),
-)
-const monthIncome = computed(() =>
-  monthEntries.value.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0),
-)
+const monthLoading = ref(false)
+const monthTotal = ref(0)
+const categoryStats = ref<{ category: string, total: number }[]>([])
+const monthEntries = ref<SheetEntry[]>([])
 
-interface GroupData { entries: Entry[], totalExpense: number }
+onMounted(async () => {
+  monthLoading.value = true
+  store.fetchToday()
+  const data = await store.fetchMonth(monthStr)
+  monthEntries.value = data
+  const map: Record<string, number> = {}
+  let total = 0
+  for (const entry of data) {
+    const amt = Number(entry.amount)
+    map[entry.category] = (map[entry.category] || 0) + amt
+    total += amt
+  }
+  monthTotal.value = total
+  categoryStats.value = Object.entries(map)
+    .map(([category, total]) => ({ category, total }))
+    .sort((a, b) => b.total - a.total)
+  monthLoading.value = false
+})
+
+const todayLabel = today.format('M月D日')
+
 const groupedEntries = computed(() => {
-  const groups: Record<string, GroupData> = {}
-  const sorted = [...store.entries].sort(
-    (a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time),
-  )
+  const groups: Record<string, { entries: SheetEntry[], totalExpense: number }> = {}
+  const sorted = [...monthEntries.value].sort((a, b) => b.date.localeCompare(a.date))
   for (const entry of sorted) {
     if (!groups[entry.date])
       groups[entry.date] = { entries: [], totalExpense: 0 }
     groups[entry.date]!.entries.push(entry)
-    if (entry.type === 'expense')
-      groups[entry.date]!.totalExpense += entry.amount
+    groups[entry.date]!.totalExpense += Number(entry.amount)
   }
   return groups
 })
 
-function formatAmt(n: number) {
-  return `NT$ ${n.toLocaleString()}`
-}
+
 </script>
 
 <template>
@@ -47,14 +56,14 @@ function formatAmt(n: number) {
     <!-- Today summary -->
     <div class="mx-4 mt-4 bg-white rounded-2xl p-4 shadow-sm">
       <p class="text-xs text-gray-400 mb-3">
-        {{ today.format('M/D') }} 今日總覽
+        {{ todayLabel }} 今日
       </p>
       <div class="grid grid-cols-3 gap-2 text-center">
         <div>
           <p class="text-xs text-gray-400 mb-1">
             支出
           </p>
-          <p class="text-lg font-semibold text-red-500">
+          <p class="text-base font-semibold text-gray-800">
             {{ formatAmt(store.todayExpense) }}
           </p>
         </div>
@@ -62,7 +71,7 @@ function formatAmt(n: number) {
           <p class="text-xs text-gray-400 mb-1">
             收入
           </p>
-          <p class="text-lg font-semibold text-green-500">
+          <p class="text-base font-semibold text-green-500">
             {{ formatAmt(store.todayIncome) }}
           </p>
         </div>
@@ -70,47 +79,59 @@ function formatAmt(n: number) {
           <p class="text-xs text-gray-400 mb-1">
             淨額
           </p>
-          <p
-            class="text-lg font-semibold"
-            :class="store.todayNet >= 0 ? 'text-green-500' : 'text-red-500'"
-          >
+          <p class="text-base font-semibold" :class="store.todayNet >= 0 ? 'text-green-500' : 'text-gray-800'">
             {{ store.todayNet >= 0 ? '+' : '' }}{{ formatAmt(store.todayNet) }}
           </p>
         </div>
       </div>
     </div>
 
-    <!-- Month summary -->
+    <!-- Monthly stats from Sheets -->
     <div class="mx-4 mt-3 bg-white rounded-2xl p-4 shadow-sm">
-      <p class="text-xs text-gray-400 mb-3">
-        {{ today.format('M') }} 月總計
-      </p>
-      <div class="grid grid-cols-2 gap-2 text-center">
-        <div>
-          <p class="text-xs text-gray-400 mb-1">
-            支出
-          </p>
-          <p class="text-lg font-semibold text-red-500">
-            {{ formatAmt(monthExpense) }}
-          </p>
-        </div>
-        <div class="border-l border-gray-100">
-          <p class="text-xs text-gray-400 mb-1">
-            收入
-          </p>
-          <p class="text-lg font-semibold text-green-500">
-            {{ formatAmt(monthIncome) }}
-          </p>
+      <div class="flex items-baseline justify-between mb-3">
+        <p class="text-xs text-gray-400">
+          {{ today.format('M') }} 月消費統計
+        </p>
+        <p class="text-base font-semibold text-gray-800">
+          {{ formatAmt(monthTotal) }}
+        </p>
+      </div>
+
+      <div v-if="monthLoading" class="text-center text-xs text-gray-300 py-4">
+        載入中...
+      </div>
+      <div v-else-if="!store.scriptUrl" class="text-center text-xs text-gray-300 py-4">
+        未連動試算表
+      </div>
+      <div v-else-if="categoryStats.length === 0" class="text-center text-xs text-gray-300 py-4">
+        本月尚無記錄
+      </div>
+      <div v-else class="space-y-3">
+        <div v-for="stat in categoryStats" :key="stat.category">
+          <div class="flex justify-between text-xs text-gray-600 mb-1">
+            <span>{{ stat.category }}</span>
+            <span>{{ formatAmt(stat.total) }}</span>
+          </div>
+          <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              class="h-full rounded-full"
+              style="background: linear-gradient(90deg, #fb923c, #ea580c)"
+              :style="{ width: `${(stat.total / monthTotal) * 100}%` }"
+            />
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Entries list -->
+    <!-- Entry history -->
     <div class="mx-4 mt-4 mb-4">
       <p class="text-xs text-gray-400 mb-2 px-1">
-        明細記錄
+        本月明細
       </p>
-      <div v-if="store.entries.length === 0" class="text-center text-sm text-gray-300 py-16">
+      <div v-if="monthLoading" class="text-center text-sm text-gray-300 py-16">
+        載入中...
+      </div>
+      <div v-else-if="monthEntries.length === 0" class="text-center text-sm text-gray-300 py-16">
         尚無任何記錄
       </div>
       <div v-else>
@@ -120,32 +141,24 @@ function formatAmt(n: number) {
               {{ date }}
             </p>
             <p class="text-xs text-gray-400">
-              支出 <span class="text-red-400">{{ formatAmt(group.totalExpense) }}</span>
+              支出 <span class="text-gray-600">{{ formatAmt(group.totalExpense) }}</span>
             </p>
           </div>
           <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div
               v-for="(entry, i) in group.entries"
-              :key="entry.id"
+              :key="i"
               class="flex items-center justify-between px-4 py-3"
               :class="i < group.entries.length - 1 ? 'border-b border-gray-50' : ''"
             >
               <div class="flex items-center gap-3">
                 <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">{{ entry.category }}</span>
-                <div>
-                  <p class="text-sm text-gray-700">
-                    {{ entry.note || '無備註' }}
-                  </p>
-                  <p class="text-xs text-gray-300">
-                    {{ entry.time }}
-                  </p>
-                </div>
+                <p class="text-sm text-gray-600">
+                  {{ entry.note || '—' }}
+                </p>
               </div>
-              <span
-                class="text-sm font-semibold"
-                :class="entry.type === 'expense' ? 'text-red-500' : 'text-green-500'"
-              >
-                {{ entry.type === 'expense' ? '-' : '+' }}{{ formatAmt(entry.amount) }}
+              <span class="text-sm font-semibold text-gray-800">
+                -{{ formatAmt(Number(entry.amount)) }}
               </span>
             </div>
           </div>
