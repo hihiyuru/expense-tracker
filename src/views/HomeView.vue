@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { SheetEntry } from '../stores/expense'
 import dayjs from 'dayjs'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { CATEGORY_ICON } from '../lib/categoryIcons'
 import { formatAmt } from '../lib/format'
-import { type SheetEntry, useExpenseStore } from '../stores/expense'
+import { useExpenseStore } from '../stores/expense'
 
 const router = useRouter()
 
@@ -41,8 +42,6 @@ const weekExpense = computed(() => {
     .filter(e => e.date >= start && e.date <= end)
     .reduce((s, e) => s + Number(e.amount), 0)
 })
-
-
 </script>
 
 <template>

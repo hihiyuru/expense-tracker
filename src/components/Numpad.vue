@@ -124,9 +124,15 @@ defineExpose({ reset })
     style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))"
   >
     <!-- Row 1 -->
-    <button class="nk-num" @click="onNumpad('1')">1</button>
-    <button class="nk-num" @click="onNumpad('2')">2</button>
-    <button class="nk-num" @click="onNumpad('3')">3</button>
+    <button class="nk-num" @click="onNumpad('1')">
+      1
+    </button>
+    <button class="nk-num" @click="onNumpad('2')">
+      2
+    </button>
+    <button class="nk-num" @click="onNumpad('3')">
+      3
+    </button>
     <button
       class="nk-op"
       :class="{ 'ring-2 ring-orange-400 bg-orange-50': pendingOp === '+' || pendingOp === '*' }"
@@ -137,9 +143,15 @@ defineExpose({ reset })
       <span :class="pendingOp === '*' ? 'text-orange-500 font-bold' : 'text-gray-500'">×</span>
     </button>
     <!-- Row 2 -->
-    <button class="nk-num" @click="onNumpad('4')">4</button>
-    <button class="nk-num" @click="onNumpad('5')">5</button>
-    <button class="nk-num" @click="onNumpad('6')">6</button>
+    <button class="nk-num" @click="onNumpad('4')">
+      4
+    </button>
+    <button class="nk-num" @click="onNumpad('5')">
+      5
+    </button>
+    <button class="nk-num" @click="onNumpad('6')">
+      6
+    </button>
     <button
       class="nk-op"
       :class="{ 'ring-2 ring-orange-400 bg-orange-50': pendingOp === '-' || pendingOp === '/' }"
@@ -150,14 +162,28 @@ defineExpose({ reset })
       <span :class="pendingOp === '/' ? 'text-orange-500 font-bold' : 'text-gray-500'">÷</span>
     </button>
     <!-- Row 3 -->
-    <button class="nk-num" @click="onNumpad('7')">7</button>
-    <button class="nk-num" @click="onNumpad('8')">8</button>
-    <button class="nk-num" @click="onNumpad('9')">9</button>
-    <button class="nk-op text-sm" @click="emit('saveMore')">保存再記</button>
+    <button class="nk-num" @click="onNumpad('7')">
+      7
+    </button>
+    <button class="nk-num" @click="onNumpad('8')">
+      8
+    </button>
+    <button class="nk-num" @click="onNumpad('9')">
+      9
+    </button>
+    <button class="nk-op text-sm" @click="emit('saveMore')">
+      保存再記
+    </button>
     <!-- Row 4 -->
-    <button class="nk-op" @click="onNumpad('.')">.</button>
-    <button class="nk-num" @click="onNumpad('0')">0</button>
-    <button class="nk-op" @click="onNumpad('del')">⌫</button>
+    <button class="nk-op" @click="onNumpad('.')">
+      .
+    </button>
+    <button class="nk-num" @click="onNumpad('0')">
+      0
+    </button>
+    <button class="nk-op" @click="onNumpad('del')">
+      ⌫
+    </button>
     <button
       v-if="pendingOp"
       class="h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-medium shadow-sm active:opacity-80 transition-opacity"

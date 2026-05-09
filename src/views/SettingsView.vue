@@ -14,13 +14,10 @@ async function copyCode() {
   setTimeout(() => copied.value = false, 2000)
 }
 
-
 function save() {
   store.setScriptUrl(scriptUrl.value.trim())
   showSuccessToast('設定已儲存')
 }
-
-
 </script>
 
 <template>
@@ -93,9 +90,10 @@ function save() {
           <span class="w-5 h-5 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-xs flex-shrink-0">3</span>
           <p>選擇函式：<strong>settleMonth</strong>、事件來源：時間驅動、類型：月計時器、日期：每月 1 號</p>
         </div>
-        <p class="text-xs text-gray-400">每月 1 號自動將上個月資料整理成獨立 sheet 並產生圓餅圖</p>
+        <p class="text-xs text-gray-400">
+          每月 1 號自動將上個月資料整理成獨立 sheet 並產生圓餅圖
+        </p>
       </div>
-
     </div>
   </div>
 </template>

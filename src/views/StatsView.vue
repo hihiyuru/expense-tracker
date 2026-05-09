@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { SheetEntry } from '../stores/expense'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { formatAmt } from '../lib/format'
-import { type SheetEntry, useExpenseStore } from '../stores/expense'
+import { useExpenseStore } from '../stores/expense'
 
 const store = useExpenseStore()
 const today = dayjs()
@@ -45,8 +46,6 @@ const groupedEntries = computed(() => {
   }
   return groups
 })
-
-
 </script>
 
 <template>
