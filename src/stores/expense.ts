@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import { get, post } from '../lib/http'
 
 export interface SheetEntry {
+  id: string
   date: string
   category: string
   amount: number
@@ -34,7 +35,19 @@ export const EXPENSE_CATEGORIES = [
   '醫療',
   '其他',
 ]
-export const PAYMENT_METHODS = ['現金', '中信Visa', '中信信用卡', '國泰信用卡', '永豐信用卡', '富邦信用卡', '轉帳']
+export enum PaymentMethod {
+  Cash = '現金',
+  CTBCVisa = '中信Visa',
+  CTBCCredit = '中信信用卡',
+  CathayCredit = '國泰信用卡',
+  SinoPacCredit = '永豐信用卡',
+  FubonCredit = '富邦信用卡',
+  Transfer = '轉帳',
+  LinePay = 'Line Pay',
+  PxPayPlus = '全支付',
+}
+
+export const PAYMENT_METHODS = Object.values(PaymentMethod)
 
 export const useExpenseStore = defineStore('expense', () => {
   const scriptUrl = ref(localStorage.getItem('scriptUrl') || '')
@@ -84,6 +97,44 @@ export const useExpenseStore = defineStore('expense', () => {
     }
   }
 
+  async function updateEntry(id: string, entry: Omit<Entry, 'id'>): Promise<{ ok: boolean, error?: string }> {
+    if (!scriptUrl.value)
+      return { ok: false, error: 'no scriptUrl' }
+    try {
+      await post(scriptUrl.value, {
+        method: 'update',
+        id,
+        date: entry.date,
+        category: entry.category,
+        amount: entry.amount,
+        paymentMethod: entry.paymentMethod,
+        note: entry.note,
+      })
+      todayFetched.value = false
+      monthCache.value = null
+      await fetchToday()
+      return { ok: true }
+    }
+    catch (e: any) {
+      return { ok: false, error: e.message }
+    }
+  }
+
+  async function deleteEntry(id: string): Promise<{ ok: boolean, error?: string }> {
+    if (!scriptUrl.value)
+      return { ok: false, error: 'no scriptUrl' }
+    try {
+      await post(scriptUrl.value, { method: 'delete', id })
+      todayFetched.value = false
+      monthCache.value = null
+      await fetchToday()
+      return { ok: true }
+    }
+    catch (e: any) {
+      return { ok: false, error: e.message }
+    }
+  }
+
   async function fetchToday(): Promise<void> {
     if (!scriptUrl.value || todayFetched.value)
       return
@@ -92,7 +143,7 @@ export const useExpenseStore = defineStore('expense', () => {
     try {
       const data = await get<SheetEntry[]>(scriptUrl.value, { type: 'today', date: todayStr })
       todayEntries.value = data.map((d, i) => ({
-        id: `sheet-${todayStr}-${i}`,
+        id: d.id || `sheet-${todayStr}-${i}`,
         date: todayStr,
         time: '00:00',
         type: 'expense' as const,
@@ -136,6 +187,8 @@ export const useExpenseStore = defineStore('expense', () => {
     todayNet,
     setScriptUrl,
     addEntry,
+    updateEntry,
+    deleteEntry,
     fetchToday,
     fetchMonth,
   }

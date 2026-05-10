@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import type { SheetEntry } from '../stores/expense'
+import type { Entry, SheetEntry } from '../stores/expense'
 import dayjs from 'dayjs'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { CATEGORY_ICON } from '../lib/categoryIcons'
 import { formatAmt } from '../lib/format'
 import { useExpenseStore } from '../stores/expense'
 
 const router = useRouter()
+const openEditEntry = inject<(entry: Entry) => void>('openEditEntry')!
 
 const store = useExpenseStore()
 const now = ref(dayjs())
 const monthEntries = ref<SheetEntry[]>([])
+const pageLoading = ref(true)
+const refreshing = ref(false)
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六']
 const MONTH_LABELS = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
@@ -21,11 +24,19 @@ onMounted(async () => {
   timer = setInterval(() => {
     now.value = dayjs()
   }, 1000)
+  pageLoading.value = true
   await store.fetchToday()
   monthEntries.value = await store.fetchMonth(now.value.format('YYYY-MM'))
+  pageLoading.value = false
 })
 onUnmounted(() => {
   clearInterval(timer)
+})
+
+watch(() => store.todayEntries.length, async () => {
+  refreshing.value = true
+  monthEntries.value = await store.fetchMonth(now.value.format('YYYY-MM'))
+  refreshing.value = false
 })
 
 const weekDays = computed(() => {
@@ -46,6 +57,28 @@ const weekExpense = computed(() => {
 
 <template>
   <div class="px-4 pt-4 space-y-3">
+    <!-- Page loading -->
+    <div v-if="pageLoading" class="flex flex-col items-center justify-center py-32">
+      <van-loading type="spinner" color="#fb923c" size="36" />
+      <p class="text-xs text-gray-400 mt-3">載入中...</p>
+    </div>
+
+    <template v-else>
+    <!-- Refreshing bar -->
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="refreshing" class="flex items-center justify-center gap-2 py-1">
+        <van-loading type="spinner" color="#fb923c" size="14" />
+        <span class="text-xs text-gray-400">更新中...</span>
+      </div>
+    </Transition>
+
     <!-- Header -->
     <div class="flex items-center justify-between">
       <span class="text-lg font-semibold text-gray-800">記帳本</span>
@@ -115,7 +148,8 @@ const weekExpense = computed(() => {
       v-for="entry in store.todayEntries"
       v-else
       :key="entry.id"
-      class="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm"
+      class="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm active:bg-gray-50 transition-colors cursor-pointer"
+      @click="openEditEntry(entry)"
     >
       <div
         class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
@@ -142,5 +176,6 @@ const weekExpense = computed(() => {
         </p>
       </div>
     </div>
+    </template>
   </div>
 </template>

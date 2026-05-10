@@ -3,16 +3,38 @@ export const appsScriptCode = `function doPost(e) {
     .getActiveSpreadsheet()
     .getSheetByName('每日消費');
   const d = JSON.parse(e.postData.contents);
+  const method = d.method || 'create';
 
+  if (method === 'delete') {
+    const rowIdx = findRowById(sheet, d.id);
+    if (rowIdx === -1)
+      return jsonResponse({ status: 'error', message: 'not found' });
+    sheet.deleteRow(rowIdx);
+    return jsonResponse({ status: 'ok' });
+  }
+
+  if (method === 'update') {
+    const rowIdx = findRowById(sheet, d.id);
+    if (rowIdx === -1)
+      return jsonResponse({ status: 'error', message: 'not found' });
+    sheet.getRange(rowIdx, 1, 1, 5).setValues([[
+      d.date, d.category, d.amount, d.paymentMethod, d.note
+    ]]);
+    sheet.getRange(rowIdx, 1).setNumberFormat('@');
+    return jsonResponse({ status: 'ok' });
+  }
+
+  // method === 'create'
+  const id = Utilities.getUuid();
   sheet.appendRow([
     d.date, d.category, d.amount,
-    d.paymentMethod, d.note
+    d.paymentMethod, d.note, id
   ]);
   // 強制日期欄位為純文字，防止 Sheets 自動轉型
   sheet.getRange(sheet.getLastRow(), 1).setNumberFormat('@');
 
   const lastRow = sheet.getLastRow();
-  const numCols = 5;
+  const numCols = 6;
   const COLOR_A = '#f1f5f9';
   const COLOR_B = '#eff6ff';
   let color = COLOR_A;
@@ -25,8 +47,22 @@ export const appsScriptCode = `function doPost(e) {
   }
   sheet.getRange(lastRow, 1, 1, numCols).setBackground(color);
 
+  return jsonResponse({ status: 'ok', id: id });
+}
+
+function findRowById(sheet, id) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 1) return -1;
+  const ids = sheet.getRange(1, 6, lastRow, 1).getValues();
+  for (var i = 0; i < ids.length; i++) {
+    if (String(ids[i][0]) === id) return i + 1;
+  }
+  return -1;
+}
+
+function jsonResponse(obj) {
   return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok' }))
+    .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
@@ -42,7 +78,8 @@ function doGet(e) {
   }
 
   const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
-  const data = sheet.getRange(1, 1, lastRow, 5).getValues();
+  const numCols = sheet.getLastColumn() >= 6 ? 6 : 5;
+  const data = sheet.getRange(1, 1, lastRow, numCols).getValues();
   const rows = data.map(function(row) {
     var d = row[0];
     var dateStr;
@@ -56,7 +93,8 @@ function doGet(e) {
       category: String(row[1]),
       amount: Number(row[2]),
       paymentMethod: String(row[3]),
-      note: String(row[4])
+      note: String(row[4]),
+      id: numCols >= 6 ? String(row[5] || '') : ''
     };
   }).filter(function(r) {
     return r.date && r.date !== '日期' && r.category && r.category !== '類別' && !isNaN(r.amount);
@@ -95,7 +133,8 @@ function settleMonth() {
   // 讀取上個月的資料
   var lastRow = dataSheet.getLastRow();
   if (lastRow < 1) return;
-  var data = dataSheet.getRange(1, 1, lastRow, 5).getValues();
+  var numCols = dataSheet.getLastColumn() >= 6 ? 6 : 5;
+  var data = dataSheet.getRange(1, 1, lastRow, numCols).getValues();
 
   var categoryMap = {};
   var total = 0;

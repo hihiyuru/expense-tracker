@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 import { Clock } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
-const props = defineProps<{ submitting: boolean, show: boolean }>()
+const props = defineProps<{ submitting: boolean, show: boolean, editing?: boolean }>()
 const emit = defineEmits<{
   confirm: []
   saveMore: []
@@ -96,23 +96,29 @@ function reset() {
   prevNum.value = null
 }
 
-defineExpose({ reset })
+function setInitialAmount(val: number) {
+  inputStr.value = val % 1 === 0 ? String(val) : val.toFixed(2)
+  pendingOp.value = null
+  prevNum.value = null
+}
+
+defineExpose({ reset, setInitialAmount })
 </script>
 
 <template>
   <!-- Amount card -->
-  <div class="mx-3 mb-2 bg-white rounded-2xl px-4 py-3 shadow-sm">
+  <div class="mx-3 mb-3 bg-gray-50 rounded-2xl px-4 py-3">
     <div class="text-4xl font-bold text-orange-500 tabular-nums">
       {{ exprLabel }}{{ inputStr === '0' && !exprLabel ? '0' : inputStr }}
     </div>
     <div class="flex items-center gap-2 mt-2">
       <Clock :size="13" class="text-gray-400 flex-shrink-0" />
       <span class="text-sm text-gray-400">{{ currentTime }}</span>
-      <span class="text-gray-200">|</span>
+      <span class="text-gray-300">|</span>
       <input
         v-model="note"
-        class="flex-1 text-sm text-gray-500 outline-none bg-transparent placeholder-gray-300"
-        placeholder="點擊填寫備注"
+        class="flex-1 text-sm text-gray-400 outline-none bg-transparent placeholder-gray-300"
+        placeholder="點擊填寫備註"
         maxlength="10"
       >
     </div>
@@ -120,7 +126,7 @@ defineExpose({ reset })
 
   <!-- Numpad -->
   <div
-    class="grid grid-cols-4 gap-2 px-3 pb-3 bg-gray-100"
+    class="grid grid-cols-4 gap-2 px-3 pb-3"
     style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))"
   >
     <!-- Row 1 -->
@@ -138,9 +144,9 @@ defineExpose({ reset })
       :class="{ 'ring-2 ring-orange-400 bg-orange-50': pendingOp === '+' || pendingOp === '*' }"
       @click="onOpBtn('+', '*')"
     >
-      <span :class="pendingOp === '+' ? 'text-orange-500 font-bold' : 'text-gray-500'">+</span>
+      <span :class="pendingOp === '+' ? 'text-orange-500 font-bold' : ''">+</span>
       <span class="mx-0.5 text-gray-300">·</span>
-      <span :class="pendingOp === '*' ? 'text-orange-500 font-bold' : 'text-gray-500'">×</span>
+      <span :class="pendingOp === '*' ? 'text-orange-500 font-bold' : ''">×</span>
     </button>
     <!-- Row 2 -->
     <button class="nk-num" @click="onNumpad('4')">
@@ -157,9 +163,9 @@ defineExpose({ reset })
       :class="{ 'ring-2 ring-orange-400 bg-orange-50': pendingOp === '-' || pendingOp === '/' }"
       @click="onOpBtn('-', '/')"
     >
-      <span :class="pendingOp === '-' ? 'text-orange-500 font-bold' : 'text-gray-500'">-</span>
+      <span :class="pendingOp === '-' ? 'text-orange-500 font-bold' : ''">-</span>
       <span class="mx-0.5 text-gray-300">·</span>
-      <span :class="pendingOp === '/' ? 'text-orange-500 font-bold' : 'text-gray-500'">÷</span>
+      <span :class="pendingOp === '/' ? 'text-orange-500 font-bold' : ''">÷</span>
     </button>
     <!-- Row 3 -->
     <button class="nk-num" @click="onNumpad('7')">
@@ -171,9 +177,10 @@ defineExpose({ reset })
     <button class="nk-num" @click="onNumpad('9')">
       9
     </button>
-    <button class="nk-op text-sm" @click="emit('saveMore')">
+    <button v-if="!props.editing" class="nk-op text-sm" @click="emit('saveMore')">
       保存再記
     </button>
+    <div v-else class="nk-op opacity-0" />
     <!-- Row 4 -->
     <button class="nk-op" @click="onNumpad('.')">
       .
@@ -181,21 +188,19 @@ defineExpose({ reset })
     <button class="nk-num" @click="onNumpad('0')">
       0
     </button>
-    <button class="nk-op" @click="onNumpad('del')">
+    <button class="nk-op text-lg" @click="onNumpad('del')">
       ⌫
     </button>
     <button
       v-if="pendingOp"
-      class="h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-medium shadow-sm active:opacity-80 transition-opacity"
-      style="background: linear-gradient(135deg, #fb923c, #ea580c)"
+      class="nk-confirm"
       @click="evaluate"
     >
       =
     </button>
     <button
       v-else
-      class="h-14 rounded-2xl flex items-center justify-center font-medium text-base shadow-sm active:opacity-80 transition-opacity"
-      style="background: linear-gradient(135deg, #fb923c, #ea580c); color: white"
+      class="nk-confirm text-sm"
       :disabled="submitting"
       @click="emit('confirm')"
     >
@@ -208,10 +213,15 @@ defineExpose({ reset })
 @reference "tailwindcss";
 
 .nk-num {
-  @apply h-14 rounded-2xl bg-white flex items-center justify-center text-2xl text-gray-800 shadow-sm active:bg-gray-50 transition-colors;
+  @apply h-14 rounded-2xl bg-white flex items-center justify-center text-2xl text-gray-800 active:bg-gray-50 transition-colors;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .nk-op {
-  @apply h-14 rounded-2xl bg-gray-200 flex items-center justify-center text-lg text-gray-600 active:bg-gray-300 transition-colors;
+  @apply h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-lg text-gray-500 active:bg-gray-200 transition-colors;
+}
+
+.nk-confirm {
+  @apply h-14 rounded-2xl bg-orange-500 flex items-center justify-center text-white text-base font-medium active:bg-orange-600 transition-colors;
 }
 </style>

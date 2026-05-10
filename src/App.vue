@@ -1,9 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import type { Entry } from './stores/expense'
+import { provide, ref } from 'vue'
 import AddEntrySheet from './components/AddEntrySheet.vue'
 import TabBar from './components/TabBar.vue'
 
 const showAddEntry = ref(false)
+const editingEntry = ref<Entry | null>(null)
+
+function openEditEntry(entry: Entry) {
+  editingEntry.value = entry
+  showAddEntry.value = true
+}
+
+function onSheetClose(v: boolean) {
+  showAddEntry.value = v
+  if (!v)
+    editingEntry.value = null
+}
+
+provide('openEditEntry', openEditEntry)
 </script>
 
 <template>
@@ -13,6 +28,10 @@ const showAddEntry = ref(false)
   >
     <router-view />
     <TabBar @add="showAddEntry = true" />
-    <AddEntrySheet v-model:show="showAddEntry" />
+    <AddEntrySheet
+      :show="showAddEntry"
+      :editing-entry="editingEntry"
+      @update:show="onSheetClose"
+    />
   </div>
 </template>
